@@ -69,8 +69,6 @@
 #' Model Selection with Large Model Spaces. \emph{Biometrika}, \bold{95},
 #' 759-771.
 
-
-
 boot_sis <- function(x, y, family, penalty, sig=0.05, covars, probs=c(0.1,0.9), parallel=TRUE) {
   if (penalty=='lasso'){
     fit <- cv.glmnet(x, y, family=family, parallel=parallel)
@@ -91,35 +89,40 @@ boot_sis <- function(x, y, family, penalty, sig=0.05, covars, probs=c(0.1,0.9), 
                          rule = "lambda.1se", parallel = parallel, verbose = TRUE, penalty.factor.init=(pmax(abs(coef.aenet), .Machine$double.eps))^(-1))
       coef <- data.frame(coef(fit_aenet))
       row.names(coef) <- colnames(x)
-  } else if (penalty=='aenet'){
-    if (family=='cox'){
-      fit = Coxnet(x, y, penalty = "Enet", alpha = 0.05, nlambda = 50, rlambda = NULL, nfolds = 10, isd=TRUE,
-                   inzero = FALSE, adaptive = c(TRUE, FALSE), aini=list(wbeta=(pmax(abs(as.numeric(coef.aenet)), .Machine$double.eps))^(-1)))
-      coef = as(as.matrix(fit[['Beta']]), "dgCMatrix")
-      row.names(coef) <- colnames(x)
-      lambda = fit[['lambda.max']]
-    } else {
-      if (family=='gaussian'){
-        fit_gcdnet <- cv.gcdnet(x, y, nfolds=10, lambda2=0.95, pf=as.vector(pmax(abs(coef.aenet), .Machine$double.eps)^(-1)), standardize=TRUE, method='ls')
+    } else if (penalty=='aenet'){
+      if (family=='cox'){
+        fit = Coxnet(x, y, penalty = "Enet", alpha = 0.05, nlambda = 50, nfolds = 10,
+                     inzero = FALSE, adaptive = c(TRUE, FALSE), aini=list(wbeta=(pmax(abs(as.numeric(coef.aenet)), .Machine$double.eps))^(-1)))
+        coef = as(as.matrix(fit[['Beta']]), "dgCMatrix")
+        row.names(coef) <- colnames(x)
+        lambda = fit[['lambda.max']]
       } else {
-        fit_gcdnet <- cv.gcdnet(x, y, nfolds=10, lambda2=0.95, pf=as.vector(pmax(abs(coef.aenet), .Machine$double.eps)^(-1)), standardize=TRUE)
+        if (family=='gaussian'){
+          fit_gcdnet <- cv.gcdnet(x, y, nfolds=10, lambda2=0.95, standardize=TRUE, method='ls')
+        } else {
+          fit_gcdnet <- cv.gcdnet(x, y, nfolds=10, lambda2=0.95, standardize=TRUE)
+        }
+        lambda = fit_gcdnet$lambda.1se
+        coef = coef(fit_gcdnet, s = "lambda.1se")
+        if(any(row.names(coef)=='(Intercept)')){
+          pf=as.vector(pmax(abs(coef), .Machine$double.eps)^(-1))[-1]
+        } else{
+          pf=as.vector(pmax(abs(coef), .Machine$double.eps)^(-1))
+        }
       }
-      coef = coef(fit_gcdnet, s = "lambda.1se")
-      lambda = fit_gcdnet$lambda.1se
+    }} else {
+      if (family != 'cox') {
+        fit = cv.ncvreg(x, y, family = family, penalty = penalty)
+        cv.1se.ind = min(which(fit$cve<fit$cve[fit$min]+fit$cvse[fit$min]))
+        coef = fit$fit$beta[, cv.1se.ind]  # extract coefficients at a single value of lambda, including the intercept
+        coef <- data.frame(coef)
+      } else {
+        fit = ncvreg::cv.ncvsurv(x, y, family = family, penalty = penalty)
+        cv.1se.ind = min(which(fit$cve<fit$cve[fit$min]+fit$cvse[fit$min]))
+        coef = fit$fit$beta[, cv.1se.ind]
+        coef <- data.frame(coef)
+      }
     }
-  }} else {
-    if (family != 'cox') {
-      fit = cv.ncvreg(x, y, family = family, penalty = penalty)
-      cv.1se.ind = min(which(fit$cve<fit$cve[fit$min]+fit$cvse[fit$min]))
-      coef = fit$fit$beta[, cv.1se.ind]  # extract coefficients at a single value of lambda, including the intercept
-      coef <- data.frame(coef)
-    } else {
-      fit = ncvreg::cv.ncvsurv(x, y, family = family, penalty = penalty)
-      cv.1se.ind = min(which(fit$cve<fit$cve[fit$min]+fit$cvse[fit$min]))
-      coef = fit$fit$beta[, cv.1se.ind]
-      coef <- data.frame(coef)
-    }
-  }
   
   
   ci_low <- ci_up <- bootstrap <- c()
@@ -129,11 +132,12 @@ boot_sis <- function(x, y, family, penalty, sig=0.05, covars, probs=c(0.1,0.9), 
   
   repeat{
     for(j in 1:10){
-      # set.seed(123)
       p <- ncol(x)
       n <- nrow(x)
       boot <- foreach (i=1:200, .combine='cbind') %dopar% {
-        rm(.Random.seed, envir=globalenv())
+        if(exists(".Random.seed")){
+          rm(.Random.seed, envir=globalenv())
+        }
         ind <- sample(1:n, replace=TRUE)
         if (penalty=='lasso'){
           fit.i <- glmnet(x[ind,], y[ind], family=family, lambda=lambda, parallel=parallel)
@@ -156,15 +160,15 @@ boot_sis <- function(x, y, family, penalty, sig=0.05, covars, probs=c(0.1,0.9), 
               print('try')
               ind <- sample(1:n, replace=TRUE)
               fit.i <- try(Coxnet(x[ind,], y[ind], penalty = "Enet", alpha = 0.05, lambda = lambda, nfolds = 10,
-                                  inzero = TRUE, adaptive = c(TRUE, FALSE), aini=list(wbeta=(pmax(abs(as.numeric(coef.aenet)), .Machine$double.eps))^(-1))))
+                                  inzero = FALSE, adaptive = c(TRUE, FALSE), aini=list(wbeta=(pmax(abs(as.numeric(coef.aenet)), .Machine$double.eps))^(-1))))
             }
             b = as(as.matrix(fit.i[['Beta']]), "dgCMatrix")
             b
           } else {
             if (family=='gaussian'){
-              fit.i <- gcdnet(x[ind,], y[ind], lambda=lambda, lambda2=0.95, pf=as.vector(pmax(abs(coef.aenet), .Machine$double.eps)^(-1)), standardize=TRUE, method='ls')
+              fit.i <- gcdnet(x[ind,], y[ind], lambda=lambda, lambda2=0.95, pf=pf, standardize=TRUE, method='ls')
             } else {
-              fit.i <- gcdnet(x[ind,], y[ind], lambda=lambda, lambda2=0.95, pf=as.vector(pmax(abs(coef.aenet), .Machine$double.eps)^(-1)), standardize=TRUE)
+              fit.i <- gcdnet(x[ind,], y[ind], lambda=lambda, lambda2=0.95, pf=pf, standardize=TRUE)
             }
             b = coef(fit.i)
             b

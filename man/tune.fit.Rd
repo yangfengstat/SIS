@@ -16,7 +16,8 @@ tune.fit(
   nfolds = 10,
   type.measure = c("deviance", "class", "auc", "mse", "mae"),
   gamma.ebic = 1,
-  parallel = TRUE
+  parallel = TRUE,
+  seed = NULL
 )
 }
 \arguments{
@@ -62,6 +63,8 @@ penalizing the size of the corresponding model space. The default is
 \code{gamma.ebic=1}. See references at the end for details.}
 
 \item{parallel}{Specifies whether to conduct parallel computing}
+
+\item{seed}{An optimal argument for setting the seed to ensure reproducibility}
 }
 \value{
 Returns an object with \item{ix}{ The vector of indices of the

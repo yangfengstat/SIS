@@ -253,18 +253,20 @@
 #' sis$cis
 #'}
 #'
+
 SIS <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", "multinom"), penalty = c("SCAD", "MCP", "lasso", "enet", "aenet", "msaenet"),
-                concavity.parameter = switch(penalty, SCAD = 3.7, 3), tune = c("bic", "ebic", "aic", "cv"), nfolds = 10,
-                type.measure = c("deviance", "class", "auc", "mse", "mae"), gamma.ebic = 1, nsis = NULL, iter = TRUE, iter.max = ifelse(greedy ==
-                  FALSE, 10, floor(nrow(x) / log(nrow(x)))), varISIS = c("vanilla", "aggr", "cons"), perm = FALSE, q = 1,
-                greedy = FALSE, greedy.size = 1, seed = NULL, standardize = TRUE, covars=NULL, boot_ci = FALSE, parallel=TRUE) {
+                      concavity.parameter = switch(penalty, SCAD = 3.7, 3), tune = c("bic", "ebic", "aic", "cv"), nfolds = 10,
+                      type.measure = c("deviance", "class", "auc", "mse", "mae"), gamma.ebic = 1, nsis = NULL, iter = TRUE, iter.max = ifelse(greedy ==
+                                                                                                                                                FALSE, 10, floor(nrow(x) / log(nrow(x)))), varISIS = c("vanilla", "aggr", "cons"), perm = FALSE, q = 1,
+                      greedy = FALSE, greedy.size = 1, seed = NULL, standardize = TRUE, covars=NULL, boot_ci = FALSE, parallel=TRUE) {
   this.call <- match.call()
   family <- match.arg(family)
   penalty <- match.arg(penalty)
   tune <- match.arg(tune)
   type.measure <- match.arg(type.measure)
   varISIS <- match.arg(varISIS)
-
+  set.seed(seed)
+  
   if (is.null(x) || is.null(y)) {
     stop("The data is missing!")
   }
@@ -283,16 +285,13 @@ SIS <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", "mult
   if (tune != "cv" && penalty %in% c("aenet", "msaenet")) {
     stop("Model currently not implemented with selected tuning option")
   }
-  if (family == "cox" && penalty %in% c("SCAD", "MCP")) {
-    stop("Cox model currently not implemented with selected penalty")
-  }
   if (family == "multinom" && penalty %in% c("SCAD", "MCP", "aenet", "msaenet")) {
     stop("Multinom model currently not implemented with selected penalty")
   }
   if (type.measure %in% c("class", "auc") && family %in% c("gaussian", "poisson", "cox")) {
     stop("'class' and 'auc' type measures are only available for logistic regression")
   }
-
+  
   if (type.measure %in% c("class", "auc", "mse", "mae") && penalty %in% c("SCAD", "MCP")) {
     stop("Only 'deviance' is available as type.measure for non-convex penalties")
   }
@@ -300,19 +299,20 @@ SIS <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", "mult
     colnames(x) <- unlist(lapply(seq(1:dim(x)[2]), function(y) paste0('V',y)))
     
   }
-
+  
   fit <- switch(family, gaussian = sisglm(
-    x, y, "gaussian", penalty, concavity.parameter, tune, nfolds, type.measure,
-    gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed, standardize, boot_ci, covars, parallel
+    x, y, "gaussian", penalty, concavity.parameter, tune,
+    nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
+    standardize, boot_ci, covars, parallel
   ),
   binomial = sisglm(
-    x,
-    y, "binomial", penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic, nsis, iter, iter.max,
-    varISIS, perm, q, greedy, greedy.size, seed, standardize, boot_ci, covars, parallel
+    x, y, "binomial", penalty, concavity.parameter, tune,
+    nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
+    standardize, boot_ci, covars, parallel
   ), poisson = sisglm(
-    x, y, "poisson", penalty,
-    concavity.parameter, tune, nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q,
-    greedy, greedy.size, seed, standardize, boot_ci, covars, parallel
+    x, y, "poisson", penalty, concavity.parameter, tune,
+    nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
+    standardize, boot_ci, covars, parallel
   ), cox = sisglm(
     x, y, "cox", penalty, concavity.parameter, tune,
     nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
@@ -351,7 +351,7 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
   }
   ix_list <- NULL
   iterind <- 0
-
+  
   if (iter == TRUE) {
     ix0_list <- obtain.ix0(
       x = x, y = y, s1 = s1, s2 = s2, family = family, nsis = nsis, iter = iter, varISIS = varISIS,
@@ -368,10 +368,11 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
         ix0 <- c(ix0, p + 1 - ix0)
       }
       pen.ind <- ix0
-      selection.fit <- tune.fit(old.x[, ix0, drop = FALSE], y, family, penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic)
+      
+      selection.fit <- tune.fit(old.x[, ix0, drop = FALSE], y, family, penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic, parallel, seed)
       coef.beta <- selection.fit$beta
       a0 <- selection.fit$a0
-
+      
       lambda <- selection.fit$lambda
       lambda.ind <- selection.fit$lambda.ind
       ix1 <- ix0[selection.fit$ix]
@@ -391,8 +392,8 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
           ))
         }
       }
-
-
+      
+      
       cat("Iter", iterind, ", selection: ", ix1, "\n")
       if (length(ix1) >= nsis || iterind >= iter.max) {
         ix0 <- ix1
@@ -404,7 +405,7 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
         }
         break
       }
-
+      
       models[[iterind]] <- ix1
       flag.models <- 0
       if (iterind > 1) {
@@ -418,7 +419,7 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
         cat("Model already selected \n")
         break
       }
-
+      
       candind <- setdiff(1:p, ix1)
       pleft <- nsis - length(ix1)
       newix_list <- obtain.newix(
@@ -451,16 +452,16 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
       ix0 <- c(ix0, p + 1 - ix0)
     }
     pen.ind <- ix0
-    selection.fit <- tune.fit(old.x[, ix0, drop = FALSE], y, family, penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic)
+    selection.fit <- tune.fit(old.x[, ix0, drop = FALSE], y, family, penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic, parallel, seed)
     coef.beta <- selection.fit$beta
     a0 <- selection.fit$a0
     lambda <- selection.fit$lambda
     lambda.ind <- selection.fit$lambda.ind
     ix1 <- ix0[selection.fit$ix]
   }
-
-
-
+  
+  
+  
   if (family == "cox") {
     if (length(ix1) > 0) {
       names(coef.beta) <- paste("X", ix1, sep = "")
@@ -471,12 +472,11 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
       names(coef.beta) <- c("(Intercept)", paste("X", ix1, sep = ""))
     }
   }
-
+  
   if (boot_ci == TRUE){
-    cis <- boot_sis(x=x[,ix1], y=y, family=family, penalty=penalty, covars=covars, parallel=parallel)
+    cis <- boot_sis(x=old.x[,ix1], y=y, family=family, penalty=penalty, covars=covars, parallel=parallel)
     return(list(sis.ix0 = sis.ix0, ix = ix1, coef.est = coef.beta, fit = selection.fit$fit, lambda = lambda, ix0 = pen.ind, ix_list = ix_list, cis=cis))
   } else{
     return(list(sis.ix0 = sis.ix0, ix = ix1, coef.est = coef.beta, fit = selection.fit$fit, lambda = lambda, ix0 = pen.ind, ix_list = ix_list))
   }
 }
-
