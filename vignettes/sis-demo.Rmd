@@ -3,6 +3,7 @@ title: "A demonstration of the SIS package"
 author: "Yang Feng, Arce Domingo"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+#output: pdf_document
 vignette: >
   %\VignetteIndexEntry{SIS-demo}
   %\VignetteEngine{knitr::rmarkdown}
