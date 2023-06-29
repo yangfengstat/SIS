@@ -1,6 +1,6 @@
 Package: SIS
-Version: 1.2
-Date: 2021-10-26
+Version: 1.3
+Date: 2023-06-29
 Title: Sure Independence Screening
 Authors@R: c(person("Yang", "Feng", email = "yangfengstat@gmail.com",
   role = c("aut", "cre")),
@@ -26,13 +26,13 @@ Imports:
     ncvreg,
     survival,
     nnet,
-    Coxnet,
     doParallel,
     gcdnet,
     msaenet,
     foreach,
     methods,
-    formatR
+    formatR,
+    Coxnet
 Description: Variable selection techniques are essential tools for model
     selection and estimation in high-dimensional statistical models. Through this
     publicly available package, we provide a unified environment to carry out
@@ -40,7 +40,7 @@ Description: Variable selection techniques are essential tools for model
     of its variants in generalized linear models (Fan and Song (2009)<doi:10.1214/10-AOS798>) and the Cox proportional hazards
     model (Fan, Feng and Wu (2010)<doi:10.1214/10-IMSCOLL606>).
 License: GPL-2
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3
 Suggests: 
     rmarkdown,
     knitr

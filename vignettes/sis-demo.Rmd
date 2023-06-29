@@ -1,6 +1,6 @@
 ---
 title: "A demonstration of the SIS package"
-author: "Yang Feng"
+author: "Yang Feng, Arce Domingo"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 ```
 
 
-We provide a detailed demo of the usage for the \verb+SIS+ package. This package implements the sure independence screening.
+We provide a detailed demo of the usage for the \verb+SIS+ package. This package implements the sure independence screening algorithm.
 
 
 * [Sure Independence Screening](#sis)
@@ -28,7 +28,9 @@ We provide a detailed demo of the usage for the \verb+SIS+ package. This package
   + [Screening with binary response](#SIS-binary)
   + [Screening with multi-categorical response](#SIS-multinom)
   + [Screening with Cox model for survival data](#SIS-cox)
-
+  + [Screening with multi-categorical response](#SIS-multinom)
+  + [Real data example (leukemia): Iterative Sure Independence Screening paired with elastic-net](#ISIS-enet-leukemia)
+  + [Real data example (prostate cancer): Iterative Sure Independence Screening paired with elastic-net](#ISIS-enet-prostate)
 
 ```{r, echo = FALSE}
 library(formatR)
@@ -37,13 +39,15 @@ library(formatR)
 
 
 ## Installation{#install}
-`SIS` can be installed from CRAN. 
+`SIS` can be installed from Github. 
 ```{r, eval=FALSE}
-install.packages("SIS", repos = "http://cran.us.r-project.org")
+library(devtools)
+devtools::install_github("statcodes/SIS", force=TRUE)
 ```
-Then we can load the package:
+Then we can load the package, as well as other relevant packages:
 ```{r}
 library(SIS)
+library(pROC)
 ```
 
 
@@ -166,3 +170,69 @@ model21$ix0[1:10]
 lapply(model21$ix_list,f<-function(x){x[1:10]})
 ```
 
+
+## Real data example (leukemia): Iterative Sure Independence Screening paired with elastic-net{#ISIS-enet-leukemia}
+```{r, message=FALSE, warning=FALSE}
+# Loading data: Gene expression data from 7129 genes and 38 patients with acute leukemias (27 in class acute lymphoblastic leukemia and 11 in class acute myeloid leukemia) from the microarray study of Golub et al. (1999). These data can be found in: http://wwwprod.broadinstitute.org/cgi-bin/cancer/datasets.cgi 
+
+load('leukemia.train.RData')
+load('leukemia.test.RData')
+
+# Getting the predictors and response variables
+x_train <- as.matrix(leukemia.train[,1:7129])
+y_train <- leukemia.train[,7130]
+x_test <- as.matrix(leukemia.test[,1:7129])
+y_test <- leukemia.test[,7130]
+
+
+# Calling SIS and calculating the time taken for the algorithm to run
+start.time <- Sys.time()
+sis <- SIS(x_train, y_train, family = "binomial", penalty='enet',
+           tune='cv', nfolds = 10, iter = TRUE, iter.max = 10,
+           seed = 123, nsis=dim(x_train)[1]/2, standardize = TRUE,
+           boot_ci=TRUE)
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+```
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=70)}
+# Getting the AUC in the test set
+pred <- predict(sis, x_test, type='class')
+auc(pred[,1], y_test)
+
+# Getting the confidence intervals of the selected variables, calculated using bootstrap
+sis$cis[2:12,c(1,5,6,7)]
+```
+
+## Real data example (prostate cancer): Iterative Sure Independence Screening paired with elastic-net{#ISIS-enet}
+```{r, message=FALSE, warning=FALSE}
+# Loading data: Gene expression data from 12600 genes and 52 patients with prostate tumors and 50 normal specimens from the microarray study of Singh et al. (2002). These data can be found in: \source{http://wwwprod.broadinstitute.org/cgi-bin/cancer/datasets.cgi} 
+load('prostate.train.RData')
+load('prostate.test.RData')
+
+# Getting the predictors and response variables
+x_train <- as.matrix(prostate.train[,1:12600])
+y_train <- prostate.train[,12601]
+x_test <- as.matrix(prostate.test[,1:12600])
+y_test <- prostate.test[,12601]
+
+# Calling SIS and calculating the time taken for the algorithm to run
+start.time <- Sys.time()
+sis <- SIS(x_train, y_train, family = "binomial", penalty='enet',
+           nfolds = 10, iter = TRUE, iter.max = 10,tune='cv', 
+           seed = 123, nsis=dim(x_train)[1]/2, standardize = TRUE,
+           boot_ci=TRUE)
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+```
+
+```{r, tidy=TRUE, tidy.opts=list(width.cutoff=70)}
+# Getting the AUC in the test set
+pred <- predict(sis, x_test, type='class')
+auc(pred[,1], y_test)
+
+# Getting the confidence intervals of the selected variables, calculated using bootstrap
+sis$cis[2:12,c(1,5,6,7)]
+```

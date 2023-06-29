@@ -12,7 +12,6 @@
 #' @importFrom ncvreg ncvsurv
 #' @importFrom ncvreg cv.ncvsurv
 #' @importFrom gcdnet cv.gcdnet
-#' @importFrom Coxnet Coxnet
 #' @importFrom glmnet cv.glmnet
 #' @importFrom msaenet aenet
 #' @import doParallel
@@ -136,7 +135,12 @@ tune.fit <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", 
     } else if (penalty == "aenet" | penalty == "msaenet") {
       enet <- cv.glmnet(x, y, alpha=0.05, family=family, type.measure = type.measure, nfolds=nfolds, parallel=parallel)
       lambda <- enet$lambda.1se
-      coef_init = coef(enet, s = lambda)
+      coef_init = coef.glmnet(enet, s = lambda)
+      browser()
+      if(any(row.names(coef_init)=='(Intercept)')){
+        pf=as.vector(pmax(abs(coef_init), .Machine$double.eps)^(-1))[-1]
+      } else{
+        pf=as.vector(pmax(abs(coef_init), .Machine$double.eps)^(-1))}
       if (penalty == "aenet"){
         if(family == 'cox'){
           cv.fit = Coxnet(x, y, penalty = "Enet", alpha = 0.05, nlambda = 50, nfolds = 10,
@@ -172,7 +176,7 @@ tune.fit <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", 
           lambda = fit_gcdnet$lambda.1se
         }
       } else if(penalty == 'msaenet'){
-        cv.fit = aenet(x, y, family = family, init = "ridge", alphas = 0.05, penalty.factor.init=(pmax(abs(coef_init), .Machine$double.eps))^(-1),
+        cv.fit = aenet(x, y, family = family, init = "ridge", alphas = 0.05, penalty.factor.init=pf,
                        rule = "lambda.1se", parallel = parallel, verbose = TRUE)
         coef.beta = cv.fit[['beta']]
         reg.fit = cv.fit[['model']]

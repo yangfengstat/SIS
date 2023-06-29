@@ -11,7 +11,6 @@
 #' @importFrom ncvreg cv.ncvsurv
 #' @importFrom gcdnet cv.gcdnet
 #' @importFrom gcdnet gcdnet
-#' @importFrom Coxnet Coxnet
 #' @importFrom glmnet cv.glmnet
 #' @importFrom msaenet aenet
 #' @import doParallel

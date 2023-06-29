@@ -8,7 +8,6 @@
 #'
 #' @export
 #' @importFrom glmnet glmnet
-#' @importFrom Coxnet Coxnet
 #' @importFrom msaenet aenet
 #' @importFrom ncvreg ncvreg
 #' @importFrom glmnet cv.glmnet
@@ -27,6 +26,7 @@
 #' @importFrom nnet multinom
 #' @import doParallel
 #' @importFrom foreach foreach
+#' @importFrom Coxnet Coxnet
 #'
 #' @param x The design matrix, of dimensions n * p, without an intercept. Each
 #' row is an observation vector.  \code{SIS} standardizes the data and includes
@@ -388,7 +388,7 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
         } else {
           return(sisglm(
             old.x, y, family, penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic,
-            nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed, standardize, s1, s2, split.tries
+            nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed, standardize, boot_ci, covars, parallel, s1 = s1, s2 = s2, split.tries
           ))
         }
       }
