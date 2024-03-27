@@ -136,7 +136,6 @@ tune.fit <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", 
       enet <- cv.glmnet(x, y, alpha=0.05, family=family, type.measure = type.measure, nfolds=nfolds, parallel=parallel)
       lambda <- enet$lambda.1se
       coef_init = coef.glmnet(enet, s = lambda)
-      browser()
       if(any(row.names(coef_init)=='(Intercept)')){
         pf=as.vector(pmax(abs(coef_init), .Machine$double.eps)^(-1))[-1]
       } else{
