@@ -303,24 +303,24 @@ SIS <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", "mult
   fit <- switch(family, gaussian = sisglm(
     x, y, "gaussian", penalty, concavity.parameter, tune,
     nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
-    standardize, boot_ci, covars, parallel
+    standardize, boot_ci, covars, probs, parallel
   ),
   binomial = sisglm(
     x, y, "binomial", penalty, concavity.parameter, tune,
     nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
-    standardize, boot_ci, covars, parallel
+    standardize, boot_ci, covars, probs, parallel
   ), poisson = sisglm(
     x, y, "poisson", penalty, concavity.parameter, tune,
     nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
-    standardize, boot_ci, covars, parallel
+    standardize, boot_ci, covars, probs, parallel
   ), cox = sisglm(
     x, y, "cox", penalty, concavity.parameter, tune,
     nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
-    standardize, boot_ci, covars, parallel
+    standardize, boot_ci, covars, probs, parallel
   ), multinom = sisglm(
     x, y, "multinom", penalty, concavity.parameter, tune,
     nfolds, type.measure, gamma.ebic, nsis, iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed,
-    standardize, boot_ci, covars, parallel
+    standardize, boot_ci, covars, probs, parallel
   )
   )
   fit$call <- this.call
@@ -329,7 +329,7 @@ SIS <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", "mult
 }
 
 sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, type.measure, gamma.ebic, nsis,
-                   iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed, standardize, boot_ci, covars, parallel, s1 = NULL, s2 = NULL, split.tries = 0) {
+                   iter, iter.max, varISIS, perm, q, greedy, greedy.size, seed, standardize, boot_ci, covars, probs, parallel, s1 = NULL, s2 = NULL, split.tries = 0) {
   storage.mode(x) <- "numeric"
   n <- dim(x)[1]
   p <- dim(x)[2]
@@ -474,7 +474,7 @@ sisglm <- function(x, y, family, penalty, concavity.parameter, tune, nfolds, typ
   }
   
   if (boot_ci == TRUE){
-    cis <- boot_sis(x=old.x[,ix1], y=y, family=family, penalty=penalty, covars=covars, parallel=parallel)
+    cis <- boot_sis(x=old.x[,ix1], y=y, family=family, penalty=penalty, covars=covars, probs=probs, parallel=parallel)
     return(list(sis.ix0 = sis.ix0, ix = ix1, coef.est = coef.beta, fit = selection.fit$fit, lambda = lambda, ix0 = pen.ind, ix_list = ix_list, cis=cis))
   } else{
     return(list(sis.ix0 = sis.ix0, ix = ix1, coef.est = coef.beta, fit = selection.fit$fit, lambda = lambda, ix0 = pen.ind, ix_list = ix_list))
