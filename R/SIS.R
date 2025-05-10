@@ -258,7 +258,7 @@ SIS <- function(x, y, family = c("gaussian", "binomial", "poisson", "cox", "mult
                       concavity.parameter = switch(penalty, SCAD = 3.7, 3), tune = c("bic", "ebic", "aic", "cv"), nfolds = 10,
                       type.measure = c("deviance", "class", "auc", "mse", "mae"), gamma.ebic = 1, nsis = NULL, iter = TRUE, iter.max = ifelse(greedy ==
                                                                                                                                                 FALSE, 10, floor(nrow(x) / log(nrow(x)))), varISIS = c("vanilla", "aggr", "cons"), perm = FALSE, q = 1,
-                      greedy = FALSE, greedy.size = 1, seed = NULL, standardize = TRUE, covars=NULL, boot_ci = FALSE, parallel=TRUE) {
+                      greedy = FALSE, greedy.size = 1, seed = NULL, standardize = TRUE, covars=NULL, probs=c(0.1,0.9), boot_ci = FALSE, parallel=TRUE) {
   this.call <- match.call()
   family <- match.arg(family)
   penalty <- match.arg(penalty)

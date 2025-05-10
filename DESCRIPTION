@@ -1,6 +1,6 @@
 Package: SIS
-Version: 1.3
-Date: 2023-06-29
+Version: 1.4
+Date: 2025-05-10
 Title: Sure Independence Screening
 Authors@R: c(person("Yang", "Feng", email = "yangfengstat@gmail.com",
   role = c("aut", "cre")),
